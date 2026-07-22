@@ -96,7 +96,7 @@ const PROBLEM_GROUPS = [
 
 const ANSWER_BLOCK_LENGTH = 170;
 const STRUCTURED_MESSAGE_KINDS = new Set(["violinist", "researcher", "body", "prescription", "step"]);
-const STRUCTURE_MARKER_PATTERN = /タイプ[ABC]=|失敗[①②]|[①②③]|Day1:|Day[237]|まずこれ1個だけ:|今日やることは/gu;
+const STRUCTURE_MARKER_PATTERN = /タイプ[ABC]=|失敗[①②③]|[①②③]|Day1:|Day[237]|まずこれ1個だけ:|今日やることは/gu;
 const HARD_WORDS = [
   ["骨盤前傾", "骨盤が前に傾き、腰が反りやすい状態"],
   ["反り腰", "腰の後ろ側が強く反っている状態"],
@@ -1079,11 +1079,12 @@ function formatMessageForDisplay(text, kind) {
   if (!STRUCTURED_MESSAGE_KINDS.has(kind)) return result;
 
   result = result
-    .replace(/^(?:先に結論を言います。|先に結論を言うと、|結論から。)/u, "")
+    .replace(/^(?:先に結論を言います。|先に結論を言うと、|先に結論です。|先に結論を。|先に結論から言うと、|先に結論から。|結論から言うと、|結論から。)/u, "")
     .replaceAll("一つの病気ではなく", "一つの原因ではなく")
     .replaceAll("直し方は一つ", "入口は一つ")
-    .replaceAll("勝手に手に入ります", "後からついてきます")
-    .replace(/処方(?!(?:値|箋))/gu, "直し方")
+    .replaceAll("勝手に手に入ります", "後からついてきます");
+
+  result = replacePrescriptionTerms(result)
     .replace(/\r\n?/gu, "\n")
     .replace(/\n{2,}/gu, "\n");
 
@@ -1092,10 +1093,24 @@ function formatMessageForDisplay(text, kind) {
   let lineBreaks = (result.match(/\n/gu) || []).length;
   return result.replace(STRUCTURE_MARKER_PATTERN, (marker, offset, source) => {
     if (lineBreaks >= 4 || offset === 0 || source[offset - 1] === "\n") return marker;
+    if (/^[①②③]$/u.test(marker) && !/[。：:\s]/u.test(source[offset - 1])) return marker;
     if (marker.startsWith("タイプ") && (offset < 20 || source[offset - 1] !== "。")) return marker;
     lineBreaks += 1;
     return `\n${marker}`;
   });
+}
+
+function replacePrescriptionTerms(text) {
+  return text
+    .replace(/処方され/gu, "直し方が示され")
+    .replace(/処方させ/gu, "直し方を示させ")
+    .replace(/処方でき/gu, "直し方を示せ")
+    .replace(/処方せず/gu, "直し方を示さず")
+    .replace(/処方する/gu, "直し方を示す")
+    .replace(/処方す/gu, "直し方を示す")
+    .replace(/処方せ/gu, "直し方を示せ")
+    .replace(/処方し/gu, "直し方を示し")
+    .replace(/処方(?!(?:値|箋))/gu, "直し方");
 }
 
 
