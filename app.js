@@ -411,6 +411,11 @@ function openQuestion(question, options = {}) {
       detail: "まず要点から",
       action: () => showLead(question),
     },
+    ...(stepsOf(question).length ? [{
+      label: "一段ずつやる",
+      detail: "今日ここから登る梯子",
+      action: () => showSteps(question),
+    }] : []),
     {
       label: "今週やることだけ知りたい",
       detail: "具体的な練習メニューだけ見る",
@@ -443,6 +448,11 @@ function showLead(question) {
       detail: `${speakerCountOf(question)}人の専門家が順番に回答`,
       action: () => startDiscussion(question),
     },
+    ...(stepsOf(question).length ? [{
+      label: "一段ずつやる",
+      detail: "今日ここから登る梯子",
+      action: () => showSteps(question),
+    }] : []),
     {
       label: "今週やることを見る",
       detail: "具体的な練習メニュー",
@@ -610,7 +620,7 @@ function showSteps(question) {
   if (state.sending) return;
   const steps = stepsOf(question);
   if (!steps.length) return;
-  addMessage("相談室", "一段ずつ登ります。合格の目安が出たら次へ進んでください。", { kind: "system" });
+  addMessage("相談室", "一段ずつ登ります。合格の目安が出たら進んでください。", { kind: "system" });
   showStepAt(question, 0);
 }
 
@@ -623,30 +633,97 @@ function showStepAt(question, index) {
     return;
   }
   const time = step.time ? `（${step.time}）` : "";
-  let text = `【${index + 1}/${steps.length}】${step.title}${time}\nやること: ${step.action}\n合格: ${step.pass}`;
-  if (step.if_stuck) text += `\n行き詰まったら: ${step.if_stuck}`;
+  const text = `【${index + 1}/${steps.length}】${step.title}${time}\nやること: ${step.action}\n合格: ${step.pass}`;
   addMessage("相談室", text, { kind: "step", showName: false });
+  presentStepChoices(question, index);
+}
 
+function presentStepChoices(question, index, options = {}) {
+  const steps = stepsOf(question);
+  const step = steps[index];
+  if (!step) {
+    showFollowupChoices(question, { exclude: "steps" });
+    return;
+  }
+  const isLast = index + 1 >= steps.length;
   const choices = [];
-  if (index + 1 < steps.length) {
+
+  if (isLast) {
     choices.push({
-      label: "できた・次へ",
-      detail: `次は「${steps[index + 1].title}」`,
-      action: () => showStepAt(question, index + 1),
+      label: "全部できた",
+      action: () => finishStepsClimb(question),
     });
   } else {
     choices.push({
-      label: "全部できた",
-      detail: "まとめの選択肢へ",
-      action: () => showFollowupChoices(question, { exclude: "steps" }),
+      label: "できた・次へ",
+      action: () => showStepAt(question, index + 1),
     });
   }
+
+  if (step.if_stuck && !options.stuckShown) {
+    choices.push({
+      label: "できない・もっと刻む",
+      detail: "行き詰まったときの一段細かいやり方",
+      action: () => showStepStuck(question, index),
+    });
+  }
+
   choices.push({
     label: "ここでやめる",
-    detail: "まとめの選択肢へ",
     action: () => showFollowupChoices(question, { exclude: "steps" }),
   });
+
   addChoiceMessage("相談室", "", choices, { compact: true });
+}
+
+function showStepStuck(question, index) {
+  if (state.sending) return;
+  const step = stepsOf(question)[index];
+  if (!step?.if_stuck) {
+    presentStepChoices(question, index, { stuckShown: true });
+    return;
+  }
+  addMessage("相談室", step.if_stuck, { kind: "step", showName: false });
+  presentStepChoices(question, index, { stuckShown: true });
+}
+
+function finishStepsClimb(question) {
+  if (state.sending) return;
+  addMessage("相談室", "一段ずつ登り切りました。よくやりました。", { kind: "system" });
+  addChoiceMessage("相談室", "", [
+    {
+      label: "ひとまずこれで進める",
+      detail: "登り切ったところで一区切り",
+      action: () => showFollowupChoices(question, { exclude: "steps" }),
+    },
+    {
+      label: "効果がまだ弱い",
+      detail: "タイプ判定やくわしく聞くへ",
+      action: () => showStepsNoEffectPath(question),
+    },
+  ], { compact: true });
+}
+
+function showStepsNoEffectPath(question) {
+  if (state.sending) return;
+  addMessage("相談室", "効果が薄いときは、自分の型を見極めるか、説明を聞き直すのが近道です。", { kind: "system" });
+  addChoiceMessage("相談室", "", [
+    {
+      label: "くわしく聞く",
+      detail: "タイプ判定から見直す",
+      action: () => startDiscussion(question),
+    },
+    {
+      label: "今週やることを見る",
+      detail: "型ごとのメニューを確認",
+      action: () => showPrescription(question),
+    },
+    {
+      label: "別の悩みを選ぶ",
+      detail: "悩みの大分類に戻る",
+      action: () => startConversation(),
+    },
+  ], { compact: true });
 }
 
 function showSources(question) {
