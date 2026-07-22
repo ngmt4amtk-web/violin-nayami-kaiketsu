@@ -26,6 +26,8 @@ const CHAPTERS = [
 
 const VALID_SPEAKERS = new Set(["バイオリニスト", "研究マニア", "身体専門家"]);
 const BLOCK_LIMIT = 190;
+const PLAIN_FORBIDDEN_TERMS = ["脱力", "肩甲骨"];
+const FORBIDDEN_SOURCE_ASSERTIONS = ["映像照合済", "映像と字幕で照合", "映像と英自動字幕で照合"];
 
 // 内部資料のファイル名を読者向けラベルへ置き換える
 const SOURCE_LABELS = [
@@ -100,10 +102,22 @@ for (const name of files) {
   if (!raw.id || !raw.title || !raw.question) errors.push(`${name}: id/title/questionが欠落`);
   if (!Array.isArray(raw.discussion) || raw.discussion.length < 4) errors.push(`${name}: discussionが4発言未満`);
   if (!Array.isArray(raw.prescription) || raw.prescription.length < 3) errors.push(`${name}: prescriptionが3項目未満`);
+  if (!Array.isArray(raw.sources) || raw.sources.length === 0 || raw.sources.some((source) => !String(source).trim())) {
+    errors.push(`${name}: sourcesは空でない文字列を1件以上含むこと`);
+  }
+  const sourceText = [...(raw.sources || []), ...(raw.secrets || []).map((secret) => secret?.source || "")].join("\n");
+  for (const assertion of FORBIDDEN_SOURCE_ASSERTIONS) {
+    if (sourceText.includes(assertion)) errors.push(`${name}: 未検証の映像断定表記「${assertion}」は禁止`);
+  }
   for (const [i, turn] of (raw.discussion || []).entries()) {
     if (!VALID_SPEAKERS.has(turn.speaker)) errors.push(`${name}: 不正な話者 (${turn.speaker})`);
     if (!turn.plain || String(turn.plain).trim().length < 40) {
       errors.push(`${name}: discussion[${i}]のplain（噛み砕き文）が欠落または短すぎ`);
+    }
+    for (const term of PLAIN_FORBIDDEN_TERMS) {
+      if (String(turn.plain || "").includes(term)) {
+        errors.push(`${name}: discussion[${i}]のplainに日常語でない表現「${term}」が残っている`);
+      }
     }
   }
   if (raw.secrets !== undefined) {
@@ -115,14 +129,12 @@ for (const name of files) {
       }
     }
   }
-  if (raw.steps !== undefined) {
-    if (!Array.isArray(raw.steps) || raw.steps.length < 3 || raw.steps.length > 7) {
-      errors.push(`${name}: stepsは3〜7段の配列であること`);
-    } else {
-      for (const [i, step] of raw.steps.entries()) {
-        if (!step.title || !step.action || !step.pass) {
-          errors.push(`${name}: steps[${i}]にtitle/action/passが必要`);
-        }
+  if (!Array.isArray(raw.steps) || raw.steps.length < 3 || raw.steps.length > 7) {
+    errors.push(`${name}: stepsは必須で、3〜7段の配列であること`);
+  } else {
+    for (const [i, step] of raw.steps.entries()) {
+      if (!step.title || !step.action || !step.pass) {
+        errors.push(`${name}: steps[${i}]にtitle/action/passが必要`);
       }
     }
   }

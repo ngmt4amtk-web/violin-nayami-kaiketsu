@@ -55,13 +55,13 @@
     "sweep_results.json「サウンディングポイントがわからない」（駒と指板の間のどこに当てるか感覚的につかめず基準の“真ん中”が曖昧、という症状の生の言い回し）",
     "Simon Fischer / natesviolin.com「the three variables」（駒と指板の間を5つのサウンドポイントに分け、speed・pressure・distance from bridgeの三変数で音を診断・調整。駒寄りほど遅く重く、指板寄りほど速く軽い。https://natesviolin.com/theres-no-secret-to-violin-sound-just-the-three-variables/ , https://www.simonfischeronline.com/uploads/5/7/7/9/57796211/058tone.pdf）",
     "Schoonderwaldt 2009 JASA 126(5):2709 / research_reports.md 6.1（弓速・弓圧・接点βの協調を実測。通常演奏β=0.06〜0.13、sul ponticello=0.01〜0.03。駒に寄るほど弓圧の許容幅=楔が狭くなる）",
-    "Violinmasterclass (Kurt Sassmannshaus)「Bow Speed, Pressure, and Sounding Point」YouTube・映像照合済（20–127秒、弓の速さ・重み・弓が弦に触れる場所を組で調整する解説を照合）"
+    "Violinmasterclass (Kurt Sassmannshaus)「Bow Speed, Pressure, and Sounding Point」YouTube・字幕・概要で確認（映像未視聴）（20–127秒、弓の速さ・重み・弓が弦に触れる場所を組で調整する解説を字幕・概要で確認）"
   ],
   "secrets": [
     {
       "title": "接点3分離ドリル",
       "text": "弓速・弓圧・接点を別々に動かして耳で覚える3つの練習。(1)メトロノームで1拍は最速・次の1拍は最遅と弓速だけを切り替える(速い弓ほど指板寄りへ寄せないと、毛が弦を捕まえきれず表面的なガラス音=ポンティチェロ気味にかすれる)。(2)弓速は一定のまま1拍は圧あり・次は圧ゼロ。(3)全弓を使って接点を指板側から駒側までゆっくり移動させる。どのドリルでも弓は駒と平行に保ち、腕の伸ばし方で接点を決めるのがコツ。3変数をバラバラに動かせるようになると、音が崩れた時どれが原因か一人で即座に切り分けられる。",
-      "source": "Violinmasterclass (Kurt Sassmannshaus)「Bow Speed, Pressure, and Sounding Point」YouTube・映像照合済（20–127秒、三要素を分けて試す練習を照合）"
+      "source": "Violinmasterclass (Kurt Sassmannshaus)「Bow Speed, Pressure, and Sounding Point」YouTube・字幕・概要で確認（映像未視聴）（20–127秒、三要素を分けて試す練習を字幕・概要で確認）"
     },
     {
       "title": "駒に寄るほど許容幅が狭い",

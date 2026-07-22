@@ -98,9 +98,9 @@
     "papers_local.md（意識せず学習した動作はプレッシャー下で崩れないが、意識的に学習した動作は逆U字で崩れる。Lee et al 2018・キーボード配列課題）",
     "trouble_map.md M072（分析的思考と実行が同じ処理資源を奪い合う・稽古で分析／本番で手放す切り替えの欠如が根本原因）",
     "papers_local.md 本番あがり節（古屋晋一ら Communications Biology・プレッシャー下で聴覚フィードバックへ過剰依存し補正しようとして崩れる／『ずれた音を無視する練習』だけが耐性を改善・熟練ピアニスト＋介入30名）",
-    "Nathan Cole — Violin「Practice Makes Performance: Part 1/3, Mindset」YouTube・映像照合済（445–545秒、本番へつなぐ練習中の注意と評価の扱い）",
-    "Nathan Cole — Violin「Practice Mistake 3: Working Too Hard」YouTube・映像照合済（20–180秒、動作を過剰に操作する練習の誤り）",
-    "Ray Chen「Masterclass: How To Get Rid of Left Hand Tension - Ray Chen」YouTube・映像照合済（20–180秒、力んだ場所を直接監視せず別の結果へ注意を移す実演）"
+    "Nathan Cole — Violin「Practice Makes Performance: Part 1/3, Mindset」YouTube・字幕・概要で確認（映像未視聴）（445–545秒、本番へつなぐ練習中の注意と評価の扱い）",
+    "Nathan Cole — Violin「Practice Mistake 3: Working Too Hard」YouTube・字幕・概要で確認（映像未視聴）（20–180秒、動作を過剰に操作する練習の誤り）",
+    "Ray Chen「Masterclass: How To Get Rid of Left Hand Tension - Ray Chen」YouTube・字幕・概要で確認（映像未視聴）（20–180秒、力んだ場所を直接監視せず別の結果へ注意を移す解説内容）"
   ],
   "secrets": [
     {
@@ -111,7 +111,7 @@
     {
       "title": "左手の力みは右手へ逃がす",
       "text": "レイ・チェンのマスタークラスより。速い箇所で左手が力んだら、左手を直接ゆるめようとしない（たいてい逆効果）。代わりに右手や親指など、緊張していない別の場所へ注意を移す『ミスディレクション』を使う。力みは難しい音符を脅威と誤認した闘争・逃走反応なので、『ストレス』『力を抜く』という言葉から注意を引き離すこと自体が効く。ダウン・アップを数えて固まる時も、狙いを弓先の一点や親指の付け根の感覚へ移してみる。",
-      "source": "Ray Chen「Masterclass: How To Get Rid of Left Hand Tension - Ray Chen」YouTube・映像照合済（20–180秒、左手の力みを直接操作せず注意を別の場所へ移す実演）"
+      "source": "Ray Chen「Masterclass: How To Get Rid of Left Hand Tension - Ray Chen」YouTube・字幕・概要で確認（映像未視聴）（20–180秒、左手の力みを直接操作せず注意を別の場所へ移す解説内容）"
     }
   ],
   "tier": 2

@@ -96,14 +96,14 @@
     "sweep_results.json「フラジオレットが鳴らない」（軽く触れても澄んだ音が出ずかすれる・指の角度と弓の圧力どちらが原因か判断できない、という症状の生の言い回し）",
     "2026-05-30_バイオリン悩み図鑑.md P09（弦は指板に触れさせる最小圧で十分＝押さえず触れるだけの軽さの原則。フラジオはこの触れるだけの軽さを極限まで使う奏法）",
     "Wikipedia『String harmonic』（自然フラジオの節と音程・比率／人工フラジオの完全四度触れは基音の2オクターブ上）",
-    "Violinmasterclass (Kurt Sassmannshaus)「Harmonics: Intermediate Exercise」YouTube・映像照合済（4〜44秒: ハーモニクスの中級練習実演を照合）",
+    "Violinmasterclass (Kurt Sassmannshaus)「Harmonics: Intermediate Exercise」YouTube・字幕・概要で確認（映像未視聴）（4〜44秒: ハーモニクスの中級練習内容を字幕・概要で確認）",
     "レオン・サメティーニ＝技巧的フラジオは長3度上・完全4度上・完全5度上の3種、オクターブ触れは不使用（books_ja.md L1095-1101）"
   ],
   "secrets": [
     {
       "title": "同じフラジオが複数の点で鳴る",
       "text": "一つの高さのフラジオは弦上の1点だけでなく複数の節で鳴る。例えば12度上(1/3の倍音)は駒から弦長の1/3と2/3の2箇所どちらでも鳴り、2オクターブ+長3度(1/5)なら節は4箇所ある。だから『ここのはず』で鳴らない時は、反対側のもう一つの節を試すと当たることが多い。節と鳴る音の対応: 1/2→1オクターブ上、1/3→12度上、1/4→2オクターブ上、1/5→2オクターブ+長3度。触れる比率は2:1,3:2,4:3,5:4。一番鳴りやすいのは1/2の中点。",
-      "source": "Wikipedia『String harmonic』（節位置と音程・比率）／Violinmasterclass (Kurt Sassmannshaus)「Harmonics: Intermediate Exercise」YouTube・映像照合済（4〜44秒: ハーモニクス練習を照合）"
+      "source": "Wikipedia『String harmonic』（節位置と音程・比率）／Violinmasterclass (Kurt Sassmannshaus)「Harmonics: Intermediate Exercise」YouTube・字幕・概要で確認（映像未視聴）（4〜44秒: ハーモニクス練習を字幕・概要で確認）"
     },
     {
       "title": "人工フラジオは四度だけじゃない",
