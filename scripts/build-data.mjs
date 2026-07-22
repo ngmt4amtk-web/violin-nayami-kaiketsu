@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const chaptersDir = join(root, "chapters");
 const outputPath = join(root, "data", "questions.js");
+const EXPECTED_QUESTION_COUNT = 113;
+const OUTPUT_PREFIX = "window.VIOLIN_QA_DATA = ";
 
 const CHAPTERS = [
   { id: 1, title: "痛み・しびれ・疲れ" },
@@ -28,6 +30,14 @@ const VALID_SPEAKERS = new Set(["バイオリニスト", "研究マニア", "身
 const BLOCK_LIMIT = 190;
 const PLAIN_FORBIDDEN_TERMS = ["脱力", "肩甲骨"];
 const FORBIDDEN_SOURCE_ASSERTIONS = ["映像照合済", "映像と字幕で照合", "映像と英自動字幕で照合"];
+const PRESCRIPTION_MARKERS = ["【量】", "【頻度】", "【合格】"];
+const STRICT_PRESCRIPTION_IDS = new Set([
+  "Q003", "Q005", "Q009", "Q033", "Q096", "Q101",
+  "Q102", "Q103", "Q104", "Q106", "Q110",
+]);
+const PRESCRIPTION_AMOUNT_PATTERN = /【量】|(?:\d+|一|二|三|四|五|六|七|八|九|十|半)(?:秒|分|回|本|音|小節|日|週間|往復|セット|枚|個|cm|mm|セント)|[×x]\d+/u;
+const PRESCRIPTION_FREQUENCY_PATTERN = /【頻度】|毎(?:日|回|週|練習|本番|レッスン)|週\d+回|1日|一日|Day\d+|日目|日間|週間|ごと|たび|練習(?:前|後|冒頭|の最初)|構える前|弾く前|本番前|初回|その日/u;
+const PRESCRIPTION_PASS_PATTERN = /【合格】|合格|判定|でき(?:る|れば|た)|減(?:る|れば)|増えない|残らない|出ない|消え(?:る|たら)|変わらない|短くなる|縮む|聞き分け|見分け|丸がつく|一致|以内|以下|以上|ゼロ/u;
 
 // 内部資料のファイル名を読者向けラベルへ置き換える
 const SOURCE_LABELS = [
@@ -85,9 +95,36 @@ function splitBlocks(text) {
 }
 
 const errors = [];
+const prescriptionWarnings = [];
 const questions = [];
+const seenIds = new Set();
+
+let lockedQuestions = new Map();
+try {
+  const currentOutput = readFileSync(outputPath, "utf8");
+  if (!currentOutput.startsWith(OUTPUT_PREFIX)) {
+    errors.push("data/questions.js: question固定値を読めない（既知の接頭辞がない）");
+  } else {
+    const currentPayload = JSON.parse(currentOutput.slice(OUTPUT_PREFIX.length).replace(/;\s*$/u, ""));
+    lockedQuestions = new Map(
+      (currentPayload.questions || []).map((question) => [question.id, question.app?.question]),
+    );
+    if (lockedQuestions.size !== EXPECTED_QUESTION_COUNT) {
+      errors.push(`data/questions.js: question固定値は${EXPECTED_QUESTION_COUNT}問必要 (${lockedQuestions.size}問)`);
+    }
+  }
+} catch (error) {
+  errors.push(`data/questions.js: question固定値が読めない (${error.message})`);
+}
 
 const files = readdirSync(chaptersDir).filter((name) => /^q\d{3}\.json$/u.test(name)).sort();
+if (files.length !== EXPECTED_QUESTION_COUNT) {
+  errors.push(`chapters: ${EXPECTED_QUESTION_COUNT}問固定 (${files.length}ファイル)`);
+}
+for (let number = 1; number <= EXPECTED_QUESTION_COUNT; number += 1) {
+  const expectedName = `q${String(number).padStart(3, "0")}.json`;
+  if (!files.includes(expectedName)) errors.push(`chapters: 必須ファイル ${expectedName} がない`);
+}
 for (const name of files) {
   const path = join(chaptersDir, name);
   let raw;
@@ -98,12 +135,42 @@ for (const name of files) {
     continue;
   }
   const chapter = CHAPTERS.find((item) => item.id === raw.chapter);
+  const expectedId = name.slice(0, -5).toUpperCase();
+  if (raw.id !== expectedId) errors.push(`${name}: ファイル名とidが不一致 (${raw.id || "欠落"} / ${expectedId})`);
+  if (seenIds.has(raw.id)) errors.push(`${name}: idが重複 (${raw.id})`);
+  seenIds.add(raw.id);
   if (!chapter) errors.push(`${name}: chapterが不正 (${raw.chapter})`);
   if (!raw.id || !raw.title || !raw.question) errors.push(`${name}: id/title/questionが欠落`);
   if (!Array.isArray(raw.discussion) || raw.discussion.length < 4) errors.push(`${name}: discussionが4発言未満`);
-  if (!Array.isArray(raw.prescription) || raw.prescription.length < 3) errors.push(`${name}: prescriptionが3項目未満`);
+  if (!Array.isArray(raw.prescription) || raw.prescription.length < 3) {
+    errors.push(`${name}: prescriptionが3項目未満`);
+  } else {
+    for (const [i, item] of raw.prescription.entries()) {
+      const text = String(item || "").trim();
+      if (!text) {
+        errors.push(`${name}: prescription[${i}]が空`);
+        continue;
+      }
+      const markerCount = PRESCRIPTION_MARKERS.filter((marker) => text.includes(marker)).length;
+      if (STRICT_PRESCRIPTION_IDS.has(raw.id) && markerCount !== PRESCRIPTION_MARKERS.length) {
+        errors.push(`${name}: prescription[${i}]は移行済みのため【量】【頻度】【合格】を3つとも明示すること`);
+      } else if (markerCount > 0 && markerCount < PRESCRIPTION_MARKERS.length) {
+        errors.push(`${name}: prescription[${i}]は【量】【頻度】【合格】を3つとも明示すること`);
+      }
+      const missing = [];
+      if (!PRESCRIPTION_AMOUNT_PATTERN.test(text)) missing.push("量");
+      if (!PRESCRIPTION_FREQUENCY_PATTERN.test(text)) missing.push("頻度");
+      if (!PRESCRIPTION_PASS_PATTERN.test(text)) missing.push("合格判定");
+      if (missing.length) prescriptionWarnings.push(`${name}[${i}]: ${missing.join("・")}`);
+    }
+  }
   if (!Array.isArray(raw.sources) || raw.sources.length === 0 || raw.sources.some((source) => !String(source).trim())) {
     errors.push(`${name}: sourcesは空でない文字列を1件以上含むこと`);
+  }
+  if (!lockedQuestions.has(raw.id)) {
+    errors.push(`${name}: data/questions.jsにquestion固定値がない`);
+  } else if (raw.question !== lockedQuestions.get(raw.id)) {
+    errors.push(`${name}: questionは変更禁止`);
   }
   const sourceText = [...(raw.sources || []), ...(raw.secrets || []).map((secret) => secret?.source || "")].join("\n");
   for (const assertion of FORBIDDEN_SOURCE_ASSERTIONS) {
@@ -179,6 +246,13 @@ if (errors.length) {
   console.error(`検証エラー ${errors.length}件:`);
   for (const line of errors) console.error(`  - ${line}`);
   process.exit(1);
+}
+if (prescriptionWarnings.length) {
+  const examples = prescriptionWarnings.slice(0, 12).join(" / ");
+  console.warn(
+    `段階検査: prescriptionの量・頻度・合格判定候補が不足 ${prescriptionWarnings.length}項目`
+      + `（新規・改稿は【量】【頻度】【合格】を明示。例: ${examples}${prescriptionWarnings.length > 12 ? " / …" : ""}）`,
+  );
 }
 
 questions.sort((a, b) => a.id.localeCompare(b.id));
