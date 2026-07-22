@@ -35,9 +35,15 @@ const STRICT_PRESCRIPTION_IDS = new Set([
   "Q003", "Q005", "Q009", "Q033", "Q096", "Q101",
   "Q102", "Q103", "Q104", "Q106", "Q110",
 ]);
-const PRESCRIPTION_AMOUNT_PATTERN = /【量】|(?:\d+|一|二|三|四|五|六|七|八|九|十|半)(?:秒|分|回|本|音|小節|日|週間|往復|セット|枚|個|cm|mm|セント)|[×x]\d+/u;
-const PRESCRIPTION_FREQUENCY_PATTERN = /【頻度】|毎(?:日|回|週|練習|本番|レッスン)|週\d+回|1日|一日|Day\d+|日目|日間|週間|ごと|たび|練習(?:前|後|冒頭|の最初)|構える前|弾く前|本番前|初回|その日|初日|毎回|変更後|診断|線引き|相談時|弦交換時|異常時|支持具/u;
-const PRESCRIPTION_PASS_PATTERN = /【合格】|合格|判定|でき(?:る|れば|た)|減(?:る|れば)|増えない|残らない|出ない|消え(?:る|たら)|変わらない|短くなる|縮む|聞き分け|見分け|丸がつく|一致|以内|以下|以上|ゼロ|記録があれば|採|相談|止め|線|中止条件/u;
+// 弓の張りは湿度と個体差で変わるため、Q107は固定回数より目視の安全上限を優先する。
+const AMOUNT_FREQUENCY_EXEMPT_IDS = new Set(["Q107"]);
+const PRESCRIPTION_AMOUNT_PATTERN = /【量】|(?:\d+(?:[〜～-]\d+)?|一|二|三|四|五|六|七|八|九|十|半)(?:秒|分|回|本|音|小節|日|週|週間|月|年|往復|セット|枚|個|cm|mm|セント|拍|弦|か所|箇所|カ所|段|種|項目|指標|条件|指|フレーズ|テスト|度)|[×x]\d+|\d+[〜～]\d+|\d+[%％]|(?:一|二|三|四|五|六|七|八|九|十)つ/u;
+const PRESCRIPTION_FREQUENCY_PATTERN = /【頻度】|毎(?:日|回|週|月|年|練習|演奏|本番|レッスン|セット|反復)|各(?:日|回|練習|レッスン|セット|反復)|(?:週|月|年)\d+(?:回|日)|週に\d+(?:回|日)|1日|一日|Day\d+|\d+日(?:目|間|後|変化)|日目|日間|週間|翌日|翌朝|翌週|初日|最終日|別日|ごと|たび|時に|日の(?:最初|最後)|次の\d+練習|練習(?:開始前|前|後|冒頭|の最初|日)|演奏(?:前|後|時)|構える(?:前|たび)|弾く前|本番前|合奏前|リハーサル|レッスン(?:前|後|時)|撮影後|調弦後|弦交換時|変更後|診断時|相談時|異常時|初回|その日|今日|今夜|ブランク明け|急な成長後/u;
+const PRESCRIPTION_PASS_PATTERN = /【合格】|合格|(?:=|→|なら)(?:主)?タイプ[A-C]|=[A-C](?:[、/]|$)|A\/B\/Cを選ぶ|判定(?:でき|する|完了|不能)|診断完了|でき(?:る|れば|た)|(?:つなが|通|鳴|澄|届|収ま|聞け)れば|減(?:る|れば)|増えない|残らない|出ない|消え(?:る|たら)|変わらない|短くなる|縮む|聞き分け|見分け|丸がつく|一致|以内|以下|以上|未満|ゼロ|そろ(?:う|えば|った)|揃(?:う|えば|った)|保て(?:る|れば|た)|続けて成功|成功(?:数|回)|改善|悪化しない|持ち越さない|再現|採用|卒業|完了|決まる/u;
+const PRESCRIPTION_BOUNDARY_PATTERN = /(?:なら|場合|とき|時は|時だけ|あれば|なければ|出たら|残る|続く|繰り返す|悪化|変化ゼロ|未達|不能|超え(?:る|たら)|減らなければ|そろわなければ|揃わなければ)[^。]*(?:中止|休止|保留|戻(?:す|る)|進(?:む|まない)|つなぐ|増やさない|替えない|見せる|相談|受診|依頼|確認|点検|分け|調整|採用|継続|卒業|終了|広げる|足す|延長|外す|選ぶ|上げる|下げる|縮める|移す|矯正しない|交換(?:候補|する)|工房|楽器店|歯科|医療機関|専門家)/u;
+// 線引き・受診・工房・歯科・安全確認は固定量より発動条件が本体。合格/線引き条件は別途必須。
+const PRESCRIPTION_AMOUNT_FREQUENCY_EXEMPT_PATTERN = /【線引き】|線引き|受診|医療機関|医療者|整形外科|手の外科|歯科|工房|楽器店|弓職人|製作家|安全(?:確認|に|上)?|中止条件/u;
+const PRESCRIPTION_FORBIDDEN_RESIDUE_PATTERN = /本文のとおり|【合格】(?:判定|合格|線引き)】|【(?:量|頻度|合格)】(?=\s*(?:【|$))/u;
 
 // 内部資料のファイル名を読者向けラベルへ置き換える
 const SOURCE_LABELS = [
@@ -150,18 +156,40 @@ for (const name of files) {
         errors.push(`${name}: prescription[${i}]が空`);
         continue;
       }
+      if (PRESCRIPTION_FORBIDDEN_RESIDUE_PATTERN.test(text)) {
+        errors.push(`${name}: prescription[${i}]に機械後付けの残骸がある`);
+      }
       const markerCount = PRESCRIPTION_MARKERS.filter((marker) => text.includes(marker)).length;
       if (STRICT_PRESCRIPTION_IDS.has(raw.id) && markerCount !== PRESCRIPTION_MARKERS.length) {
         errors.push(`${name}: prescription[${i}]は移行済みのため【量】【頻度】【合格】を3つとも明示すること`);
       } else if (markerCount > 0 && markerCount < PRESCRIPTION_MARKERS.length) {
         errors.push(`${name}: prescription[${i}]は【量】【頻度】【合格】を3つとも明示すること`);
       }
+      if (markerCount === PRESCRIPTION_MARKERS.length) {
+        const markerPositions = PRESCRIPTION_MARKERS.map((marker) => text.indexOf(marker));
+        if (!(markerPositions[0] < markerPositions[1] && markerPositions[1] < markerPositions[2])) {
+          errors.push(`${name}: prescription[${i}]の【量】【頻度】【合格】の順序が不正`);
+        }
+        for (const [markerIndex, marker] of PRESCRIPTION_MARKERS.entries()) {
+          const bodyStart = markerPositions[markerIndex] + marker.length;
+          const bodyEnd = markerPositions[markerIndex + 1] ?? text.length;
+          const body = text.slice(bodyStart, bodyEnd).trim();
+          if (!body || /^(?:本文のとおり|合格|判定|線引き)】?$/u.test(body)) {
+            errors.push(`${name}: prescription[${i}]の${marker}が空または機械的な代入`);
+          }
+        }
+      }
+      const amountFrequencyExempt = AMOUNT_FREQUENCY_EXEMPT_IDS.has(raw.id)
+        || PRESCRIPTION_AMOUNT_FREQUENCY_EXEMPT_PATTERN.test(text);
       const missing = [];
-      if (!PRESCRIPTION_AMOUNT_PATTERN.test(text)) missing.push("量");
-      if (!PRESCRIPTION_FREQUENCY_PATTERN.test(text)) missing.push("頻度");
-      if (!PRESCRIPTION_PASS_PATTERN.test(text)) missing.push("合格判定");
+      if (!amountFrequencyExempt && !PRESCRIPTION_AMOUNT_PATTERN.test(text)) missing.push("量");
+      if (!amountFrequencyExempt && !PRESCRIPTION_FREQUENCY_PATTERN.test(text)) missing.push("頻度");
+      if (!PRESCRIPTION_PASS_PATTERN.test(text) && !PRESCRIPTION_BOUNDARY_PATTERN.test(text)) {
+        missing.push("合格判定または線引き条件");
+      }
       if (missing.length) {
-        errors.push(`${name}: prescription[${i}]に量・頻度・合格判定が不足（${missing.join("・")}）。【量】【頻度】【合格】を明示すること`);
+        const excerpt = text.length > 70 ? `${text.slice(0, 70)}…` : text;
+        errors.push(`${name}: prescription[${i}]に${missing.join("・")}が不足（${excerpt}）`);
       }
     }
   }
