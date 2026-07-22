@@ -290,7 +290,7 @@ h1 {
   grid-template-columns: 42px minmax(0, calc(100% - 50px));
   gap: 8px;
   width: 100%;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
 
 .message-row.user {
@@ -322,16 +322,17 @@ h1 {
 .bubble {
   display: inline-block;
   width: auto;
-  max-width: min(100%, 330px);
-  padding: 10px 12px;
+  max-width: min(100%, 360px);
+  padding: 11px 13px;
   background: var(--bubble);
   border-radius: 4px 16px 16px 16px;
   box-shadow: 0 2px 0 rgba(30, 48, 33, .05);
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.62;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-break: strict;
 }
 
 .bubble.violinist {
@@ -444,7 +445,7 @@ h1 {
 .choice-grid {
   display: grid;
   gap: 8px;
-  width: min(100%, 330px);
+  width: min(100%, 360px);
   margin-top: 8px;
 }
 

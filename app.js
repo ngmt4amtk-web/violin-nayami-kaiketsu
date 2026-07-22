@@ -95,6 +95,8 @@ const PROBLEM_GROUPS = [
 ];
 
 const ANSWER_BLOCK_LENGTH = 170;
+const STRUCTURED_MESSAGE_KINDS = new Set(["violinist", "researcher", "body", "prescription", "step"]);
+const STRUCTURE_MARKER_PATTERN = /タイプ[ABC]=|失敗[①②]|[①②③]|Day1:|Day[237]|まずこれ1個だけ:|今日やることは/gu;
 const HARD_WORDS = [
   ["骨盤前傾", "骨盤が前に傾き、腰が反りやすい状態"],
   ["反り腰", "腰の後ろ側が強く反っている状態"],
@@ -405,24 +407,24 @@ function openQuestion(question, options = {}) {
 
   if (options.skipChoices) return;
 
-  addChoiceMessage("相談室", "この悩みですね。どうしますか？", [
+  addChoiceMessage("相談室", "この悩みで進めます。どこから見ますか？", [
     {
-      label: "答えを聞く",
-      detail: "まず要点から",
+      label: "読み方を選ぶ",
+      detail: "くわしく・手順・今週から選ぶ",
       action: () => showLead(question),
     },
     ...(stepsOf(question).length ? [{
       label: "一段ずつやる",
-      detail: "今日ここから登る梯子",
+      detail: "小さい手順で進める",
       action: () => showSteps(question),
     }] : []),
     {
-      label: "今週やることだけ知りたい",
+      label: "今週の練習だけ見る",
       detail: "具体的な練習メニューだけ見る",
       action: () => showPrescription(question),
     },
     ...(secretsOf(question).length ? [{
-      label: "裏技・プロの証言を見る",
+      label: "コツと根拠を見る",
       detail: "教本に載りにくいコツと現場の声",
       action: () => showSecrets(question),
     }] : []),
@@ -450,7 +452,7 @@ function showLead(question) {
     },
     ...(stepsOf(question).length ? [{
       label: "一段ずつやる",
-      detail: "今日ここから登る梯子",
+      detail: "小さい手順で進める",
       action: () => showSteps(question),
     }] : []),
     {
@@ -459,7 +461,7 @@ function showLead(question) {
       action: () => showPrescription(question),
     },
     ...(secretsOf(question).length ? [{
-      label: "裏技・プロの証言を見る",
+      label: "コツと根拠を見る",
       detail: "教本に載りにくいコツと現場の声",
       action: () => showSecrets(question),
     }] : []),
@@ -497,7 +499,7 @@ async function startDiscussion(question) {
     return;
   }
   const speakerCount = new Set(segments.map((segment) => segment.speaker)).size;
-  addMessage("相談室", `${speakerCount}人が順番に答えます。まずは${segments[0].speaker}から。\n区切りごとに出るボタンで先へ進められます。`, { kind: "system" });
+  addMessage("相談室", `${speakerCount}人の専門家が順番に説明します。最初は${segments[0].speaker}です。\n区切りごとに出るボタンで先へ進められます。`, { kind: "system" });
   showDiscussionBlock(question, segments, 0);
 }
 
@@ -528,7 +530,7 @@ function showDiscussionCheckpoint(question, segments, index) {
         action: () => finishDiscussion(question),
       },
       {
-        label: "かみ砕く",
+        label: "やさしく読む",
         detail: "いまの部分をやさしく",
         action: () => showSegmentClarification(question, segments, index),
       },
@@ -544,7 +546,7 @@ function showDiscussionCheckpoint(question, segments, index) {
         action: () => showDiscussionBlock(question, segments, index + 1),
       },
       {
-        label: "かみ砕く",
+        label: "やさしく読む",
         detail: "いまの部分をやさしく",
         action: () => showSegmentClarification(question, segments, index),
       },
@@ -564,7 +566,7 @@ function showDiscussionCheckpoint(question, segments, index) {
       action: () => showDiscussionBlock(question, segments, index + 1),
     },
     {
-      label: "かみ砕く",
+      label: "やさしく読む",
       detail: "いまの部分をやさしく",
       action: () => showSegmentClarification(question, segments, index),
     },
@@ -650,7 +652,7 @@ function presentStepChoices(question, index, options = {}) {
 
   if (isLast) {
     choices.push({
-      label: "全部できた",
+      label: "この手順はできた",
       action: () => finishStepsClimb(question),
     });
   } else {
@@ -790,13 +792,13 @@ function showFollowupChoices(question, options = {}) {
   if (options.exclude !== "steps" && stepsOf(question).length) {
     choices.push({
       label: "一段ずつやる",
-      detail: "今日ここから登る梯子",
+      detail: "小さい手順で進める",
       action: () => showSteps(question),
     });
   }
   if (options.exclude !== "secrets" && secretsOf(question).length) {
     choices.push({
-      label: "裏技・プロの証言を見る",
+      label: "コツと根拠を見る",
       detail: "教本に載りにくいコツと現場の声",
       action: () => showSecrets(question),
     });
@@ -828,12 +830,13 @@ function addMessage(speaker, text, options = {}) {
   const row = document.createElement("div");
   row.className = "message-row";
   const kind = options.kind || info.key;
+  const displayText = formatMessageForDisplay(text, kind);
   const name = options.showName === false ? "" : `<div class="speaker">${escapeHtml(speaker)}</div>`;
   row.innerHTML = `
     <img class="avatar" src="${info.avatar}" alt="">
     <div class="message-stack">
       ${name}
-      <div class="bubble ${kind}">${escapeHtml(text)}</div>
+      <div class="bubble ${kind}">${escapeHtml(displayText)}</div>
     </div>
   `;
   appendChatRow(row);
@@ -1068,17 +1071,31 @@ function makeAskText(question) {
 }
 
 function makePlainLead(question) {
-  const first = removeDenseParentheses(question.app.prescription[0] || "");
-  if (!first) return "まずは状況を分けて考えます。今すぐ全部を直そうとせず、できるところから見ます。";
-  return `まず短く言うと、最初に見るのはここです。\n${first}`;
+  return "次に読むものを選んでください。理由まで知りたいなら「くわしく聞く」、今すぐ試すなら「一段ずつやる」、練習メニューだけなら「今週やること」です。";
 }
 
-function removeDenseParentheses(text) {
-  return String(text || "")
-    .replace(/（[^）]{1,26}）/gu, "")
-    .replace(/\([^)]{1,26}\)/gu, "")
-    .replace(/\s+/gu, " ")
-    .trim();
+function formatMessageForDisplay(text, kind) {
+  let result = String(text ?? "");
+  if (!STRUCTURED_MESSAGE_KINDS.has(kind)) return result;
+
+  result = result
+    .replace(/^(?:先に結論を言います。|先に結論を言うと、|結論から。)/u, "")
+    .replaceAll("一つの病気ではなく", "一つの原因ではなく")
+    .replaceAll("直し方は一つ", "入口は一つ")
+    .replaceAll("勝手に手に入ります", "後からついてきます")
+    .replace(/処方(?!(?:値|箋))/gu, "直し方")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\n{2,}/gu, "\n");
+
+  if (result.length < 80) return result;
+
+  let lineBreaks = (result.match(/\n/gu) || []).length;
+  return result.replace(STRUCTURE_MARKER_PATTERN, (marker, offset, source) => {
+    if (lineBreaks >= 4 || offset === 0 || source[offset - 1] === "\n") return marker;
+    if (marker.startsWith("タイプ") && (offset < 20 || source[offset - 1] !== "。")) return marker;
+    lineBreaks += 1;
+    return `\n${marker}`;
+  });
 }
 
 
