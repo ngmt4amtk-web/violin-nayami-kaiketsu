@@ -78,25 +78,70 @@ function formatSource(raw) {
   return text.replace(/\s+/gu, " ").trim();
 }
 
-function splitSentences(text) {
-  return String(text || "")
-    .replace(/\s+/gu, "")
-    .match(/[^。！？!?]+[。！？!?]?/gu) || [];
-}
-
+// 改行と箇条書き行を保持したまま、吹き出し長へ分割する。
+// （空白全削除すると `- **ラベル**：` が溶接され、画面で生アスタリスクになる）
 function splitBlocks(text) {
-  const sentences = splitSentences(text);
+  const normalized = String(text || "").replace(/\r\n?/gu, "\n").trim();
+  if (!normalized) return [];
+
+  const units = [];
+  const paragraphs = normalized.split(/\n{2,}/u);
+  paragraphs.forEach((para, paraIndex) => {
+    let proseLines = [];
+    const flushProse = () => {
+      if (!proseLines.length) return;
+      const prose = proseLines.join("\n").replace(/[^\S\n]+/gu, " ").trim();
+      proseLines = [];
+      if (!prose) return;
+      const sentences = prose.match(/[^。！？!?]+[。！？!?]?/gu) || [prose];
+      for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        if (trimmed) units.push({ kind: "sentence", text: trimmed });
+      }
+    };
+    for (const line of para.split("\n")) {
+      if (/^\s*-\s+/u.test(line)) {
+        flushProse();
+        units.push({ kind: "list", text: line.replace(/[^\S\n]+/gu, " ").trim() });
+      } else {
+        proseLines.push(line);
+      }
+    }
+    flushProse();
+    if (paraIndex < paragraphs.length - 1) units.push({ kind: "para" });
+  });
+
   const blocks = [];
   let current = "";
-  for (const sentence of sentences) {
-    if (current && (current.length + sentence.length) > BLOCK_LIMIT) {
-      blocks.push({ t: current });
-      current = sentence;
+  const flush = () => {
+    const trimmed = current.replace(/\n+$/u, "").trimEnd();
+    if (trimmed) blocks.push({ t: trimmed });
+    current = "";
+  };
+  const appendWithBreak = (piece, separator) => {
+    const next = current ? `${current}${separator}${piece}` : piece;
+    if (current && next.length > BLOCK_LIMIT) {
+      flush();
+      current = piece;
     } else {
-      current += sentence;
+      current = next;
     }
+  };
+
+  for (const unit of units) {
+    if (unit.kind === "para") {
+      // 段落境界は空行として残すが、吹き出しは上限まで詰める
+      if (current && !current.endsWith("\n")) current += "\n\n";
+      continue;
+    }
+    if (unit.kind === "list") {
+      const sep = !current || current.endsWith("\n") ? "" : "\n";
+      appendWithBreak(unit.text, sep);
+      continue;
+    }
+    appendWithBreak(unit.text, "");
   }
-  if (current) blocks.push({ t: current });
+  flush();
   return blocks;
 }
 

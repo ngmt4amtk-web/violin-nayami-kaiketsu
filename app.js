@@ -97,6 +97,7 @@ const PROBLEM_GROUPS = [
 const ANSWER_BLOCK_LENGTH = 170;
 const STRUCTURED_MESSAGE_KINDS = new Set(["violinist", "researcher", "body", "prescription", "step"]);
 const STRUCTURE_MARKER_PATTERN = /タイプ[ABC]=|失敗[①②③]|[①②③]|Day1:|Day[237]|まずこれ1個だけ:|今日やることは/gu;
+const WELDED_LIST_PATTERN = /([^\n])(-\s*\*\*[^*]+?\*\*[：:])/gu;
 const HARD_WORDS = [
   ["骨盤前傾", "骨盤が前に傾き、腰が反りやすい状態"],
   ["反り腰", "腰の後ろ側が強く反っている状態"],
@@ -711,7 +712,7 @@ function addMessage(speaker, text, options = {}) {
     <img class="avatar" src="${info.avatar}" alt="">
     <div class="message-stack">
       ${name}
-      <div class="bubble ${kind}">${escapeHtml(displayText)}</div>
+      <div class="bubble ${kind}">${renderBubbleHtml(displayText)}</div>
     </div>
   `;
   appendChatRow(row);
@@ -957,7 +958,10 @@ function formatMessageForDisplay(text, kind) {
 
   result = replacePrescriptionTerms(result)
     .replace(/\r\n?/gu, "\n")
-    .replace(/\n{2,}/gu, "\n");
+    .replace(/\n{3,}/gu, "\n\n")
+    // 旧ビルドで溶接された `- **ラベル**：` を行頭へ戻す
+    .replace(WELDED_LIST_PATTERN, "$1\n$2")
+    .replace(/([。！？!?])-(\*\*)/gu, "$1\n- $2");
 
   if (result.length < 80) return result;
 
@@ -969,6 +973,14 @@ function formatMessageForDisplay(text, kind) {
     lineBreaks += 1;
     return `\n${marker}`;
   });
+}
+
+// 吹き出し用の軽いMarkdown（**太字** と行頭 `- `）。HTMLはescapeしてからだけ変換する。
+function renderBubbleHtml(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*([^*\n]+)\*\*/gu, "<strong>$1</strong>");
+  html = html.replace(/(^|\n)- /gu, "$1・");
+  return html;
 }
 
 function replacePrescriptionTerms(text) {
