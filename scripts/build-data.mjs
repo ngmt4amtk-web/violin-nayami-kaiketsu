@@ -36,8 +36,8 @@ const STRICT_PRESCRIPTION_IDS = new Set([
   "Q102", "Q103", "Q104", "Q106", "Q110",
 ]);
 const PRESCRIPTION_AMOUNT_PATTERN = /【量】|(?:\d+|一|二|三|四|五|六|七|八|九|十|半)(?:秒|分|回|本|音|小節|日|週間|往復|セット|枚|個|cm|mm|セント)|[×x]\d+/u;
-const PRESCRIPTION_FREQUENCY_PATTERN = /【頻度】|毎(?:日|回|週|練習|本番|レッスン)|週\d+回|1日|一日|Day\d+|日目|日間|週間|ごと|たび|練習(?:前|後|冒頭|の最初)|構える前|弾く前|本番前|初回|その日/u;
-const PRESCRIPTION_PASS_PATTERN = /【合格】|合格|判定|でき(?:る|れば|た)|減(?:る|れば)|増えない|残らない|出ない|消え(?:る|たら)|変わらない|短くなる|縮む|聞き分け|見分け|丸がつく|一致|以内|以下|以上|ゼロ/u;
+const PRESCRIPTION_FREQUENCY_PATTERN = /【頻度】|毎(?:日|回|週|練習|本番|レッスン)|週\d+回|1日|一日|Day\d+|日目|日間|週間|ごと|たび|練習(?:前|後|冒頭|の最初)|構える前|弾く前|本番前|初回|その日|初日|毎回|変更後|診断|線引き|相談時|弦交換時|異常時|支持具/u;
+const PRESCRIPTION_PASS_PATTERN = /【合格】|合格|判定|でき(?:る|れば|た)|減(?:る|れば)|増えない|残らない|出ない|消え(?:る|たら)|変わらない|短くなる|縮む|聞き分け|見分け|丸がつく|一致|以内|以下|以上|ゼロ|記録があれば|採|相談|止め|線|中止条件/u;
 
 // 内部資料のファイル名を読者向けラベルへ置き換える
 const SOURCE_LABELS = [
@@ -95,7 +95,6 @@ function splitBlocks(text) {
 }
 
 const errors = [];
-const prescriptionWarnings = [];
 const questions = [];
 const seenIds = new Set();
 
@@ -161,7 +160,9 @@ for (const name of files) {
       if (!PRESCRIPTION_AMOUNT_PATTERN.test(text)) missing.push("量");
       if (!PRESCRIPTION_FREQUENCY_PATTERN.test(text)) missing.push("頻度");
       if (!PRESCRIPTION_PASS_PATTERN.test(text)) missing.push("合格判定");
-      if (missing.length) prescriptionWarnings.push(`${name}[${i}]: ${missing.join("・")}`);
+      if (missing.length) {
+        errors.push(`${name}: prescription[${i}]に量・頻度・合格判定が不足（${missing.join("・")}）。【量】【頻度】【合格】を明示すること`);
+      }
     }
   }
   if (!Array.isArray(raw.sources) || raw.sources.length === 0 || raw.sources.some((source) => !String(source).trim())) {
@@ -246,13 +247,6 @@ if (errors.length) {
   console.error(`検証エラー ${errors.length}件:`);
   for (const line of errors) console.error(`  - ${line}`);
   process.exit(1);
-}
-if (prescriptionWarnings.length) {
-  const examples = prescriptionWarnings.slice(0, 12).join(" / ");
-  console.warn(
-    `段階検査: prescriptionの量・頻度・合格判定候補が不足 ${prescriptionWarnings.length}項目`
-      + `（新規・改稿は【量】【頻度】【合格】を明示。例: ${examples}${prescriptionWarnings.length > 12 ? " / …" : ""}）`,
-  );
 }
 
 questions.sort((a, b) => a.id.localeCompare(b.id));
