@@ -1,7 +1,7 @@
 window.VIOLIN_QA_DATA = {
   "source": {
     "path": "violin-nayami-kaiketsu/chapters",
-    "generated_at": "2026-07-22T14:48:53.654Z",
+    "generated_at": "2026-07-22T14:52:41.575Z",
     "count": 113
   },
   "chapters": [
