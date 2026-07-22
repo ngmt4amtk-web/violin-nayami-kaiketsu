@@ -181,9 +181,7 @@ function init() {
   const deepLinkId = params.get("q")?.toUpperCase();
   const deepLinked = deepLinkId && DATA.questions.find((q) => q.id === deepLinkId);
   if (deepLinked) {
-    const straightToAnswer = params.get("view") === "answer" || params.get("view") === "clarify";
-    openQuestion(deepLinked, { fromDeepLink: true, skipChoices: straightToAnswer });
-    if (straightToAnswer) startDiscussion(deepLinked);
+    openQuestion(deepLinked);
     return;
   }
 
@@ -388,7 +386,7 @@ function showQuestionChoices(group, page) {
   addChoiceMessage("相談室", "この中なら、どれが一番近いですか？", choices);
 }
 
-function openQuestion(question, options = {}) {
+function openQuestion(question) {
   if (state.sending) return;
   disableStaleChoices();
   state.activeQuestion = question;
@@ -404,78 +402,7 @@ function openQuestion(question, options = {}) {
   els.roomSub.textContent = `${question.id}・${question.chapter_title}`;
 
   addUserMessage(makeAskText(question));
-
-  if (options.skipChoices) return;
-
-  addChoiceMessage("相談室", "この悩みで進めます。どこから見ますか？", [
-    {
-      label: "読み方を選ぶ",
-      detail: "くわしく・手順・今週から選ぶ",
-      action: () => showLead(question),
-    },
-    ...(stepsOf(question).length ? [{
-      label: "一段ずつやる",
-      detail: "小さい手順で進める",
-      action: () => showSteps(question),
-    }] : []),
-    {
-      label: "今週の練習だけ見る",
-      detail: "具体的な練習メニューだけ見る",
-      action: () => showPrescription(question),
-    },
-    ...(secretsOf(question).length ? [{
-      label: "コツと根拠を見る",
-      detail: "教本に載りにくいコツと現場の声",
-      action: () => showSecrets(question),
-    }] : []),
-    ...(question.sources.length ? [{
-      label: "出典を見る",
-      detail: "元になった本や論文を見る",
-      action: () => showSources(question),
-    }] : []),
-    {
-      label: "別の悩みを選ぶ",
-      detail: "悩みの大分類に戻る",
-      action: () => startConversation(),
-    },
-  ]);
-}
-
-function showLead(question) {
-  if (state.sending) return;
-  addMessage("相談室", makePlainLead(question), { kind: "system" });
-  addChoiceMessage("相談室", "ここからどうしますか？", [
-    {
-      label: "くわしく聞く",
-      detail: `${speakerCountOf(question)}人の専門家が順番に回答`,
-      action: () => startDiscussion(question),
-    },
-    ...(stepsOf(question).length ? [{
-      label: "一段ずつやる",
-      detail: "小さい手順で進める",
-      action: () => showSteps(question),
-    }] : []),
-    {
-      label: "今週やることを見る",
-      detail: "具体的な練習メニュー",
-      action: () => showPrescription(question),
-    },
-    ...(secretsOf(question).length ? [{
-      label: "コツと根拠を見る",
-      detail: "教本に載りにくいコツと現場の声",
-      action: () => showSecrets(question),
-    }] : []),
-    ...(question.sources.length ? [{
-      label: "出典を見る",
-      detail: "元になった本や論文",
-      action: () => showSources(question),
-    }] : []),
-    {
-      label: "別の悩みを選ぶ",
-      detail: "悩みの大分類に戻る",
-      action: () => startConversation(),
-    },
-  ]);
+  startDiscussion(question);
 }
 
 async function startDiscussion(question) {
@@ -498,8 +425,6 @@ async function startDiscussion(question) {
     ]);
     return;
   }
-  const speakerCount = new Set(segments.map((segment) => segment.speaker)).size;
-  addMessage("相談室", `${speakerCount}人の専門家が順番に説明します。最初は${segments[0].speaker}です。\n区切りごとに出るボタンで先へ進められます。`, { kind: "system" });
   showDiscussionBlock(question, segments, 0);
 }
 
@@ -519,51 +444,13 @@ async function showDiscussionBlock(question, segments, index) {
 }
 
 function showDiscussionCheckpoint(question, segments, index) {
-  const current = segments[index];
   const next = segments[index + 1];
-
-  if (!next) {
-    addChoiceMessage("相談室", "", [
-      {
-        label: "まとめへ",
-        detail: "今週やることなど",
-        action: () => finishDiscussion(question),
-      },
-      {
-        label: "やさしく読む",
-        detail: "いまの部分をやさしく",
-        action: () => showSegmentClarification(question, segments, index),
-      },
-    ], { compact: true });
-    return;
-  }
-
-  if (next.speaker !== current.speaker) {
-    addChoiceMessage("相談室", "", [
-      {
-        label: "続ける",
-        detail: "続きを読む",
-        action: () => showDiscussionBlock(question, segments, index + 1),
-      },
-      {
-        label: "やさしく読む",
-        detail: "いまの部分をやさしく",
-        action: () => showSegmentClarification(question, segments, index),
-      },
-      {
-        label: "まとめへ",
-        detail: "今週やることなど",
-        action: () => finishDiscussion(question),
-      },
-    ], { compact: true });
-    return;
-  }
 
   addChoiceMessage("相談室", "", [
     {
       label: "続ける",
-      detail: "続きを読む",
-      action: () => showDiscussionBlock(question, segments, index + 1),
+      detail: next ? "続きを読む" : "読み終える",
+      action: () => (next ? showDiscussionBlock(question, segments, index + 1) : finishDiscussion(question)),
     },
     {
       label: "やさしく読む",
@@ -584,19 +471,7 @@ async function showSegmentClarification(question, segments, index) {
       }]
     : segmentClarificationMessages(segment.text);
   await sendPacedMessages(messages);
-  const next = segments[index + 1];
-  addChoiceMessage("相談室", "", [
-    {
-      label: "続ける",
-      detail: next ? "続きを読む" : "まとめへ",
-      action: () => (next ? showDiscussionBlock(question, segments, index + 1) : finishDiscussion(question)),
-    },
-    {
-      label: "まとめへ",
-      detail: "今週やることなど",
-      action: () => finishDiscussion(question),
-    },
-  ], { compact: true });
+  showDiscussionCheckpoint(question, segments, index);
 }
 
 function finishDiscussion(question) {
@@ -1068,10 +943,6 @@ function simplifySentence(sentence) {
 function makeAskText(question) {
   const profile = question.app.profile;
   return `これで困っています。\n${question.app.question}${profile ? `\n\n${profile}` : ""}`;
-}
-
-function makePlainLead(question) {
-  return "次に読むものを選んでください。理由まで知りたいなら「くわしく聞く」、今すぐ試すなら「一段ずつやる」、練習メニューだけなら「今週やること」です。";
 }
 
 function formatMessageForDisplay(text, kind) {
